@@ -1,0 +1,133 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:shree_video_creator/app/routes.dart';
+import 'package:shree_video_creator/core/services/export_service.dart';
+import 'package:shree_video_creator/features/editor/controllers/editor_controller.dart';
+
+class ExportScreen extends StatefulWidget {
+  const ExportScreen({super.key});
+
+  @override
+  State<ExportScreen> createState() => _ExportScreenState();
+}
+
+class _ExportScreenState extends State<ExportScreen> {
+  String _resolution = '1080p';
+  int _frameRate = 30;
+  double _quality = 0.85;
+  bool _isExporting = false;
+
+  Future<void> _exportVideo() async {
+    final editorState = context.read<EditorController>().editorState;
+    final inputPath = editorState.selectedVideoPath ?? '';
+    if (inputPath.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No valid video found for export.')),
+      );
+      return;
+    }
+
+    setState(() => _isExporting = true);
+
+    try {
+      final exportService = PlaceholderExportService();
+      final outputPath = '/storage/emulated/0/Movies/shree_video_creator_export.mp4';
+
+      final result = await exportService.export(
+        inputPath: inputPath,
+        outputPath: outputPath,
+        start: const Duration(seconds: 0),
+        end: const Duration(seconds: 15),
+        aspectRatio: editorState.aspectRatio,
+        width: _resolution == '720p' ? 1280 : _resolution == '4K' ? 3840 : 1920,
+        height: _resolution == '720p' ? 720 : _resolution == '4K' ? 2160 : 1080,
+      );
+
+      if (!mounted) return;
+
+      if (result == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Export engine not connected. Please integrate FFmpeg or native rendering to enable real export.',
+            ),
+            duration: Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isExporting = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('Export Video'),
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Resolution', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: ['720p', '1080p', '4K'].map((res) {
+                  final selected = _resolution == res;
+                  return ChoiceChip(
+                    label: Text(res),
+                    selected: selected,
+                    onSelected: (_) => setState(() => _resolution = res),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+              const Text('Frame Rate', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: [24, 30, 60].map((fps) {
+                  final selected = _frameRate == fps;
+                  return ChoiceChip(
+                    label: Text('$fps FPS'),
+                    selected: selected,
+                    onSelected: (_) => setState(() => _frameRate = fps),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+              const Text('Quality', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              Slider(
+                value: _quality,
+                min: 0.1,
+                max: 1,
+                divisions: 9,
+                onChanged: _isExporting ? null : (value) => setState(() => _quality = value),
+              ),
+              const Spacer(),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _isExporting ? null : _exportVideo,
+                  icon: _isExporting ? const SizedBox.shrink() : const Icon(Icons.file_upload_rounded),
+                  label: Text(_isExporting ? 'Exporting...' : 'Export Video'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

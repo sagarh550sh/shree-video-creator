@@ -1,0 +1,633 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
+import 'package:video_player/video_player.dart';
+
+import 'package:shree_video_creator/app/routes.dart';
+import 'package:shree_video_creator/core/widgets/primary_button.dart';
+import 'package:shree_video_creator/features/editor/controllers/editor_controller.dart';
+import 'package:shree_video_creator/models/music_track.dart';
+import 'package:shree_video_creator/models/text_overlay.dart';
+
+class MediaPickerScreen extends StatefulWidget {
+  const MediaPickerScreen({super.key});
+
+  @override
+  State<MediaPickerScreen> createState() => _MediaPickerScreenState();
+}
+
+class _MediaPickerScreenState extends State<MediaPickerScreen> {
+  final ImagePicker _picker = ImagePicker();
+  XFile? _selectedVideo;
+  XFile? _selectedPhoto;
+
+  Future<void> _pickVideo() async {
+    try {
+      final XFile? file = await _picker.pickVideo(source: ImageSource.gallery);
+      if (!mounted) {
+        return;
+      }
+
+      if (file == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No video selected.')),
+        );
+        return;
+      }
+
+      setState(() => _selectedVideo = file);
+      context.read<EditorController>().updateVideoPath(file.path);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Selected: ${file.name}')),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to access gallery: $error')),
+      );
+    }
+  }
+
+  Future<void> _pickPhoto() async {
+    try {
+      final XFile? file = await _picker.pickImage(source: ImageSource.gallery);
+      if (!mounted) {
+        return;
+      }
+      if (file == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No photo selected.')),
+        );
+        return;
+      }
+      setState(() => _selectedPhoto = file);
+      context.read<EditorController>().updatePhotoPath(file.path);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Selected photo: ${file.name}')),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gallery permission issue: $error')),
+      );
+    }
+  }
+
+  void _continueToEditor() {
+    final videoPath = context.read<EditorController>().editorState.selectedVideoPath;
+    if (videoPath == null || videoPath.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a video first.')),
+      );
+      return;
+    }
+
+    Navigator.pushNamed(context, AppRoutes.editor, arguments: videoPath);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedPath = context.watch<EditorController>().editorState.selectedVideoPath;
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('Select Media'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 12),
+            PrimaryButton(
+              label: 'Choose Video',
+              onPressed: _pickVideo,
+              icon: Icons.video_library_rounded,
+            ),
+            const SizedBox(height: 16),
+            PrimaryButton(
+              label: 'Choose Photo',
+              onPressed: _pickPhoto,
+              icon: Icons.image_rounded,
+            ),
+            const SizedBox(height: 28),
+            if (selectedPath != null && selectedPath.isNotEmpty) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Selected video',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      File(selectedPath).path.split('/').last,
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                    const SizedBox(height: 6),
+                    const Text('Selected state: ready'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+            const SizedBox(height: 8),
+            PrimaryButton(
+              label: 'Continue to Editor',
+              onPressed: _continueToEditor,
+              icon: Icons.play_arrow_rounded,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class EditorScreen extends StatefulWidget {
+  const EditorScreen({super.key, this.videoPath});
+
+  final String? videoPath;
+
+  @override
+  State<EditorScreen> createState() => _EditorScreenState();
+}
+
+class _EditorScreenState extends State<EditorScreen> {
+  late final VideoPlayerController _controller;
+  bool _isPlaying = false;
+  double _start = 0;
+  double _end = 30;
+  double _speed = 1;
+  String _aspectRatio = '9:16';
+  String _selectedFilter = 'Original';
+  TextOverlay? _textOverlay;
+  MusicTrack? _musicTrack;
+
+  @override
+  void initState() {
+    super.initState();
+    final videoPath = widget.videoPath ?? context.read<EditorController>().editorState.selectedVideoPath;
+    if (videoPath != null && videoPath.isNotEmpty) {
+      _controller = VideoPlayerController.file(File(videoPath))
+        ..initialize().then((_) {
+          if (mounted) {
+            setState(() {
+              _end = _controller.value.duration.inSeconds.toDouble();
+            });
+          }
+        }).catchError((error) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Unable to initialize video: $error')),
+            );
+          }
+        });
+    } else {
+      _controller = VideoPlayerController.networkUrl(
+        Uri.parse('https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4'),
+      );
+    }
+    _controller.setLooping(true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _togglePlayPause() async {
+    if (_controller.value.isInitialized) {
+      if (_controller.value.isPlaying) {
+        await _controller.pause();
+      } else {
+        await _controller.play();
+      }
+      setState(() => _isPlaying = _controller.value.isPlaying);
+    }
+  }
+
+  void _showTextEditor() {
+    final textController = TextEditingController(text: _textOverlay?.text ?? '');
+    final sizeController = TextEditingController(
+      text: (_textOverlay?.fontSize ?? 32).toStringAsFixed(0),
+    );
+    double fontSize = _textOverlay?.fontSize ?? 32;
+    bool isBold = _textOverlay?.isBold ?? false;
+    double xPosition = _textOverlay?.positionX ?? 0.5;
+    double yPosition = _textOverlay?.positionY ?? 0.5;
+    Color selectedColor = _textOverlay != null
+        ? Color(_textOverlay!.color)
+        : Colors.white;
+
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Text Overlay'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: textController,
+                      decoration: const InputDecoration(labelText: 'Enter text'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: sizeController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Font size'),
+                      onChanged: (value) {
+                        final parsed = double.tryParse(value);
+                        if (parsed != null) {
+                          setDialogState(() => fontSize = parsed);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Text('Bold'),
+                        const Spacer(),
+                        Switch(
+                          value: isBold,
+                          onChanged: (value) => setDialogState(() => isBold = value),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Text('Position X'),
+                        Expanded(
+                          child: Slider(
+                            value: xPosition,
+                            onChanged: (value) => setDialogState(() => xPosition = value),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        const Text('Position Y'),
+                        Expanded(
+                          child: Slider(
+                            value: yPosition,
+                            onChanged: (value) => setDialogState(() => yPosition = value),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Text('Color'),
+                        const Spacer(),
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: selectedColor,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Colors.white,
+                        Colors.yellow,
+                        Colors.orange,
+                        Colors.red,
+                        Colors.blue,
+                        Colors.green,
+                      ].map((color) {
+                        return GestureDetector(
+                          onTap: () => setDialogState(() => selectedColor = color),
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: color,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    setState(() => _textOverlay = null);
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Remove'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    final text = textController.text.trim();
+                    if (text.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please enter text to add overlay.')),
+                      );
+                      return;
+                    }
+                    setState(() {
+                      _textOverlay = TextOverlay(
+                        text: text,
+                        fontSize: fontSize,
+                        isBold: isBold,
+                        positionX: xPosition,
+                        positionY: yPosition,
+                        color: selectedColor.value,
+                      );
+                    });
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Apply'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showMusicDialog() {
+    final options = [
+      MusicTrack(name: 'Morning Vibes', volume: 0.7),
+      MusicTrack(name: 'Soft Chill', volume: 0.8),
+      MusicTrack(name: 'Motivational Beat', volume: 0.9),
+    ];
+
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return SimpleDialog(
+          title: const Text('Select Music'),
+          children: [
+            for (final track in options)
+              ListTile(
+                leading: const Icon(Icons.music_note_rounded),
+                title: Text(track.name),
+                subtitle: const Text('Device music placeholder'),
+                onTap: () {
+                  setState(() => _musicTrack = track);
+                  Navigator.pop(context);
+                },
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final editorController = context.watch<EditorController>();
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('Edit Video'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.ios_share_rounded),
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.export),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  height: 300,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Stack(
+                    children: [
+                      _controller.value.isInitialized
+                          ? SizedBox.expand(
+                              child: FittedBox(
+                                fit: BoxFit.cover,
+                                child: SizedBox(
+                                  width: _controller.value.size.width,
+                                  height: _controller.value.size.height,
+                                  child: VideoPlayer(_controller),
+                                ),
+                              ),
+                            )
+                          : const SizedBox.expand(
+                              child: Center(
+                                child: CircularProgressIndicator(color: Colors.white),
+                              ),
+                            ),
+                      if (_textOverlay != null)
+                        Positioned(
+                          left: (_textOverlay!.positionX * 250).clamp(12.0, 220.0),
+                          top: (_textOverlay!.positionY * 200).clamp(20.0, 180.0),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              _textOverlay!.text,
+                              style: TextStyle(
+                                fontSize: _textOverlay!.fontSize,
+                                fontWeight: _textOverlay!.isBold ? FontWeight.bold : FontWeight.normal,
+                                color: Color(_textOverlay!.color),
+                              ),
+                            ),
+                          ),
+                        ),
+                      Positioned(
+                        bottom: 16,
+                        right: 16,
+                        child: FloatingActionButton.small(
+                          backgroundColor: Colors.white.withOpacity(0.8),
+                          onPressed: _togglePlayPause,
+                          child: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text('Timeline'),
+                const SizedBox(height: 8),
+                RangeSlider(
+                  values: RangeValues(_start, _end),
+                  min: 0,
+                  max: 30,
+                  onChanged: (values) {
+                    setState(() {
+                      _start = values.start;
+                      _end = values.end;
+                    });
+                    editorController.setTrimRange(values.start, values.end);
+                  },
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Start: ${_start.toStringAsFixed(1)}s'),
+                    Text('End: ${_end.toStringAsFixed(1)}s'),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    _EditorToolChip(label: 'Trim', icon: Icons.cut_rounded),
+                    _EditorToolChip(label: 'Music', icon: Icons.music_note_rounded, onTap: _showMusicDialog),
+                    _EditorToolChip(label: 'Text', icon: Icons.text_fields_rounded, onTap: _showTextEditor),
+                    _EditorToolChip(label: 'Speed', icon: Icons.speed_rounded),
+                    _EditorToolChip(label: 'Crop', icon: Icons.crop_rounded),
+                    _EditorToolChip(label: 'Filter', icon: Icons.filter_alt_rounded),
+                    _EditorToolChip(label: 'Aspect Ratio', icon: Icons.aspect_ratio_rounded),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const Text('Aspect Ratio'),
+                const SizedBox(height: 8),
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(value: '9:16', label: Text('9:16')),
+                    ButtonSegment(value: '16:9', label: Text('16:9')),
+                    ButtonSegment(value: '1:1', label: Text('1:1')),
+                  ],
+                  selected: {_aspectRatio},
+                  onSelectionChanged: (newSelection) {
+                    setState(() => _aspectRatio = newSelection.first);
+                    editorController.setAspectRatio(newSelection.first);
+                  },
+                ),
+                const SizedBox(height: 18),
+                const Text('Speed'),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [0.25, 0.5, 1.0, 1.5, 2.0].map((value) {
+                    final selected = (_speed == value);
+                    return ChoiceChip(
+                      label: Text('${value}x'),
+                      selected: selected,
+                      onSelected: (_) {
+                        setState(() => _speed = value);
+                        editorController.setSpeed(value);
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 18),
+                const Text('Filters'),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: ['Original', 'Bright', 'Vintage', 'Black & White', 'Warm', 'Cool']
+                      .map((filter) {
+                    final selected = _selectedFilter == filter;
+                    return ChoiceChip(
+                      label: Text(filter),
+                      selected: selected,
+                      onSelected: (_) => setState(() => _selectedFilter = filter),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 24),
+                if (_musicTrack != null)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.music_note_rounded),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _musicTrack!.name,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => setState(() => _musicTrack = null),
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EditorToolChip extends StatelessWidget {
+  const _EditorToolChip({
+    required this.label,
+    required this.icon,
+    this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ActionChip(
+      avatar: Icon(icon, size: 18),
+      label: Text(label),
+      onPressed: onTap ?? () {},
+    );
+  }
+}

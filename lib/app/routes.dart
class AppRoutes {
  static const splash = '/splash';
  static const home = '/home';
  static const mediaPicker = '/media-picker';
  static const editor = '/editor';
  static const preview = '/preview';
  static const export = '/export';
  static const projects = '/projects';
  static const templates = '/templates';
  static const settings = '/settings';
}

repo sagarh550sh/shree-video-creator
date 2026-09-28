@@ -1,0 +1,63 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:shree_video_creator/app/routes.dart';
+import 'package:shree_video_creator/app/theme.dart';
+import 'package:shree_video_creator/core/services/export_service.dart';
+import 'package:shree_video_creator/core/services/storage_service.dart';
+import 'package:shree_video_creator/features/editor/controllers/editor_controller.dart';
+import 'package:shree_video_creator/features/home/screens/home_screen.dart';
+import 'package:shree_video_creator/features/media/screens/media_picker_screen.dart';
+import 'package:shree_video_creator/features/projects/screens/projects_screen.dart';
+import 'package:shree_video_creator/features/settings/screens/settings_screen.dart';
+import 'package:shree_video_creator/features/splash/screens/splash_screen.dart';
+import 'package:shree_video_creator/features/templates/screens/templates_screen.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final storageService = StorageService();
+  await storageService.init();
+
+  runApp(
+    ShreeVideoCreatorApp(
+      storageService: storageService,
+      exportService: PlaceholderExportService(),
+    ),
+  );
+}
+
+class ShreeVideoCreatorApp extends StatelessWidget {
+  const ShreeVideoCreatorApp({
+    super.key,
+    required this.storageService,
+    required this.exportService,
+  });
+
+  final StorageService storageService;
+  final ExportService exportService;
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => EditorController(storageService: storageService),
+        ),
+      ],
+      child: MaterialApp(
+        title: 'Shree Video Creator',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        initialRoute: AppRoutes.splash,
+        routes: {
+          AppRoutes.splash: (_) => const SplashScreen(),
+          AppRoutes.mediaPicker: (_) => const MediaPickerScreen(),
+          AppRoutes.projects: (_) => const ProjectsScreen(),
+          AppRoutes.templates: (_) => const TemplatesScreen(),
+          AppRoutes.settings: (_) => const SettingsScreen(),
+        },
+        home: const HomeScreen(),
+      ),
+    );
+  }
+}

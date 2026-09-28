@@ -1,0 +1,83 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:shree_video_creator/app/routes.dart';
+import 'package:shree_video_creator/core/services/export_service.dart';
+import 'package:shree_video_creator/features/editor/controllers/editor_controller.dart';
+
+class PreviewScreen extends StatelessWidget {
+  const PreviewScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final editorState = context.watch<EditorController>().editorState;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Preview'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.play_circle_outline_rounded,
+                    color: Colors.white,
+                    size: 72,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Edit'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () async {
+                      final exportService = PlaceholderExportService();
+                      final outputPath = '/storage/emulated/0/Movies/shree_video_creator_preview.mp4';
+                      final result = await exportService.export(
+                        inputPath: editorState.selectedVideoPath ?? '',
+                        outputPath: outputPath,
+                        start: Duration.zero,
+                        end: const Duration(seconds: 15),
+                        aspectRatio: editorState.aspectRatio,
+                      );
+
+                      if (result == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Export engine requires FFmpeg/native setup before a real preview export can run.',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+
+                      Navigator.pushNamed(context, AppRoutes.export);
+                    },
+                    child: const Text('Export'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

@@ -1,0 +1,107 @@
+import 'package:flutter/material.dart';
+
+class AppTheme {
+  static ThemeData get lightTheme {
+    const primary = Color(0xFFEA6B2E);
+    const background = Color(0xFFF7F4F1);
+
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: primary,
+        brightness: Brightness.light,
+        primary: primary,
+        secondary: const Color(0xFFFCB64D),
+        surface: Colors.white,
+        background: background,
+      ),
+      scaffoldBackgroundColor: background,
+      appBarTheme: const AppBarTheme(
+        centerTitle: false,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+      ),
+      cardTheme: CardTheme(
+        elevation: 0,
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          foregroundColor: Colors.white,
+          backgroundColor: primary,
+          minimumSize: const Size.fromHeight(52),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          textStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.black87,
+          minimumSize: const Size.fromHeight(52),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          side: const BorderSide(color: Color(0xFFE7E1DD)),
+        ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        indicatorColor: const Color(0xFFFFE9DE),
+        labelTextStyle: WidgetStatePropertyAll(
+          const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+      ),
+      textTheme: const TextTheme(
+        headlineLarge: TextStyle(
+          fontSize: 32,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF1C1C1E),
+        ),
+        headlineMedium: TextStyle(
+          fontSize: 28,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF1C1C1E),
+        ),
+        titleLarge: TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF1C1C1E),
+        ),
+        titleMedium: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF1C1C1E),
+        ),
+        bodyLarge: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: Color(0xFF27272A),
+        ),
+        bodyMedium: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: Color(0xFF4D4D4D),
+        ),
+      ),
+    );
+  }
+}
+
+class AppColors {
+  static const primary = Color(0xFFEA6B2E);
+  static const primarySoft = Color(0xFFFFF1EB);
+  static const accent = Color(0xFFFCB64D);
+  static const dark = Color(0xFF1C1C1E);
+  static const muted = Color(0xFF6B7280);
+  static const card = Colors.white;
+  static const lightSurface = Color(0xFFF7F4F1);
+}

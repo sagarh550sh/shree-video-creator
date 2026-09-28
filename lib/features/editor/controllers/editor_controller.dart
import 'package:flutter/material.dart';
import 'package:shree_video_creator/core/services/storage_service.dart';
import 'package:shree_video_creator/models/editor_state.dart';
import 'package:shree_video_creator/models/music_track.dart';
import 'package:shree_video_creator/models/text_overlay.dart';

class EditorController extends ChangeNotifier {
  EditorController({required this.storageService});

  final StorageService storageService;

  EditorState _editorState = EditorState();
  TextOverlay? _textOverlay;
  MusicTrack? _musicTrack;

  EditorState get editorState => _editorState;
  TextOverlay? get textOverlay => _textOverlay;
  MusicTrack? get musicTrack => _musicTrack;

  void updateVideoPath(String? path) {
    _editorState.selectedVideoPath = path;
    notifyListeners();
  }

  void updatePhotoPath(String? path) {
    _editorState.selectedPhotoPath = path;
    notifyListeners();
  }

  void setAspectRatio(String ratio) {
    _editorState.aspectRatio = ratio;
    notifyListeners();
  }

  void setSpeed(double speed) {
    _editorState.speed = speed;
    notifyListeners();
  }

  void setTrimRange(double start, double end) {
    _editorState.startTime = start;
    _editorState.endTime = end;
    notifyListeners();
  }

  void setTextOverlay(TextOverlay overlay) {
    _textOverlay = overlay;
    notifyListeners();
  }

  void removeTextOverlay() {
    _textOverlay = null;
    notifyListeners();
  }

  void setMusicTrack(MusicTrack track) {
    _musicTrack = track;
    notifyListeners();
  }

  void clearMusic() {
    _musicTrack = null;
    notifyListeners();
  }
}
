@@ -1,0 +1,81 @@
+class EditorState {
+  EditorState({
+    this.selectedVideoPath,
+    this.selectedPhotoPath,
+    this.aspectRatio = '9:16',
+    this.speed = 1.0,
+    this.startTime = 0.0,
+    this.endTime = 0.0,
+  });
+
+  String? selectedVideoPath;
+  String? selectedPhotoPath;
+  String aspectRatio;
+  double speed;
+  double startTime;
+  double endTime;
+}
+
+class TextOverlay {
+  TextOverlay({
+    required this.text,
+    this.fontSize = 32,
+    this.isBold = false,
+    this.positionX = 0.5,
+    this.positionY = 0.5,
+    this.color = 0xFFFFFFFF,
+  });
+
+  final String text;
+  final double fontSize;
+  final bool isBold;
+  final double positionX;
+  final double positionY;
+  final int color;
+}
+
+class MusicTrack {
+  MusicTrack({
+    required this.name,
+    this.path,
+    this.volume = 0.8,
+    this.startAt = Duration.zero,
+    this.endAt = const Duration(seconds: 30),
+  });
+
+  final String name;
+  final String? path;
+  final double volume;
+  final Duration startAt;
+  final Duration endAt;
+}
+
+class ExportSettings {
+  ExportSettings({
+    this.resolution = '1080p',
+    this.frameRate = 30,
+    this.quality = 0.8,
+    this.aspectRatio = '9:16',
+  });
+
+  final String resolution;
+  final int frameRate;
+  final double quality;
+  final String aspectRatio;
+}
+
+class Template {
+  Template({
+    required this.id,
+    required this.title,
+    required this.category,
+    required this.description,
+    this.color = 0xFFEA6B2E,
+  });
+
+  final String id;
+  final String title;
+  final String category;
+  final String description;
+  final int color;
+}

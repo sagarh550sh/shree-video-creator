@@ -1,0 +1,100 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:shree_video_creator/app/routes.dart';
+import 'package:shree_video_creator/features/editor/controllers/editor_controller.dart';
+import 'package:shree_video_creator/features/projects/controllers/projects_controller.dart';
+import 'package:shree_video_creator/models/video_project.dart';
+
+class ProjectsScreen extends StatefulWidget {
+  const ProjectsScreen({super.key});
+
+  @override
+  State<ProjectsScreen> createState() => _ProjectsScreenState();
+}
+
+class _ProjectsScreenState extends State<ProjectsScreen> {
+  @override
+  Widget build(BuildContext context) {
+    final controller = context.watch<ProjectsController>();
+    final projects = controller.projects;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('My Projects'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: projects.isEmpty
+            ? const Center(
+                child: Text(
+                  'No projects yet.',
+                  style: TextStyle(fontSize: 18, color: Colors.black54),
+                ),
+              )
+            : ListView.builder(
+                itemCount: projects.length,
+                itemBuilder: (context, index) {
+                  final project = projects[index];
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF1EB),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(Icons.video_library_rounded, color: Color(0xFFEA6B2E), size: 32),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(project.name, style: Theme.of(context).textTheme.titleMedium),
+                              const SizedBox(height: 4),
+                              Text(project.duration ?? '00:32', style: Theme.of(context).textTheme.bodyMedium),
+                              const SizedBox(height: 4),
+                              Text(
+                                project.lastEditedAt != null
+                                    ? 'Edited: ${project.lastEditedAt!.toLocal().toString().split(' ')[0]}'
+                                    : 'Just now',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ],
+                          ),
+                        ),
+                        PopupMenuButton<String>(
+                          onSelected: (value) {
+                            if (value == 'open') {
+                              Navigator.pushNamed(context, AppRoutes.editor);
+                            } else if (value == 'rename') {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Rename action available in a later release.')),
+                              );
+                            } else if (value == 'delete') {
+                              context.read<ProjectsController>().removeProject(project.id);
+                            }
+                          },
+                          itemBuilder: (context) => const [
+                            PopupMenuItem(value: 'open', child: Text('Open')),
+                            PopupMenuItem(value: 'rename', child: Text('Rename')),
+                            PopupMenuItem(value: 'delete', child: Text('Delete')),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+      ),
+    );
+  }
+}

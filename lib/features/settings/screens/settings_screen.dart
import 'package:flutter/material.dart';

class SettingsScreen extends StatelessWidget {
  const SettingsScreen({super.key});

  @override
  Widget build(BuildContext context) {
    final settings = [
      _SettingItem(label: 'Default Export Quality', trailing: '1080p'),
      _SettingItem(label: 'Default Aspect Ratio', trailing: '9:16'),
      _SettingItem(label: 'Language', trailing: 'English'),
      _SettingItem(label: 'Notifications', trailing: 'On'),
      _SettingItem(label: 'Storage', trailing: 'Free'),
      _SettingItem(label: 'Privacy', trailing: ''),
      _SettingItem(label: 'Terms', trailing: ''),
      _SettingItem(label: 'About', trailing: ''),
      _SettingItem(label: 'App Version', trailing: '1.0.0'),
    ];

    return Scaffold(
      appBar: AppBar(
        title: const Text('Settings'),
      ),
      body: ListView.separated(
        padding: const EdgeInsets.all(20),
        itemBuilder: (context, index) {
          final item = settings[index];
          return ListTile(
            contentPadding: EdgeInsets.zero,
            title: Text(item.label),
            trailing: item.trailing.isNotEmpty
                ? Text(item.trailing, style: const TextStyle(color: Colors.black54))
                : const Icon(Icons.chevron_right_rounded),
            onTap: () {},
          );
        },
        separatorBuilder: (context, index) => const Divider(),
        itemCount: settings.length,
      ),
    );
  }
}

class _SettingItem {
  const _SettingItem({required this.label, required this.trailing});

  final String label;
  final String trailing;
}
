@@ -1,0 +1,127 @@
+import 'package:flutter/material.dart';
+
+class TemplatesScreen extends StatelessWidget {
+  const TemplatesScreen({super.key});
+
+  static const categories = [
+    'Devotional',
+    'Birthday',
+    'Status',
+    'Festival',
+    'Reels',
+    'Shorts',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Templates'),
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: categories.map((category) {
+                  return Chip(label: Text(category));
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+              Expanded(
+                child: GridView.count(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16,
+                  childAspectRatio: 0.84,
+                  children: [
+                    _TemplateCard(
+                      title: 'Devotional Story',
+                      category: 'Devotional',
+                      accent: const Color(0xFFEBA461),
+                    ),
+                    _TemplateCard(
+                      title: 'Birthday Reel',
+                      category: 'Birthday',
+                      accent: const Color(0xFFEA6B2E),
+                    ),
+                    _TemplateCard(
+                      title: 'Festival Clip',
+                      category: 'Festival',
+                      accent: const Color(0xFF6C5CE7),
+                    ),
+                    _TemplateCard(
+                      title: 'Status Text',
+                      category: 'Status',
+                      accent: const Color(0xFF10B981),
+                    ),
+                    _TemplateCard(
+                      title: 'Shorts Intro',
+                      category: 'Shorts',
+                      accent: const Color(0xFFF59E0B),
+                    ),
+                    _TemplateCard(
+                      title: 'Reel Promo',
+                      category: 'Reels',
+                      accent: const Color(0xFFEC4899),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TemplateCard extends StatelessWidget {
+  const _TemplateCard({
+    required this.title,
+    required this.category,
+    required this.accent,
+  });
+
+  final String title;
+  final String category;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 110,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [accent.withOpacity(0.9), accent.withOpacity(0.45)],
+              ),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: const Center(
+              child: Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 42),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(category, style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+        ],
+      ),
+    );
+  }
+}

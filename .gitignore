@@ -1,0 +1,30 @@
+# This file is used to ignore build and generated files from version control.
+
+# Flutter / Dart
+.dart_tool/
+.packages
+.pub-cache/
+.pubspec.lock
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Android / iOS generated files
+android/.gradle/
+android/local.properties
+android/key.properties
+ios/Flutter/Generated.xcconfig
+ios/Pods/
+ios/.symlinks/
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log
